@@ -7,6 +7,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import javax.swing.Timer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Main class for the Global Banner application.
@@ -27,6 +29,21 @@ public class Main {
      * Timer for window movement animation
      */
     private static Timer animationTimer = null;
+
+    /**
+     * List of all available screens
+     */
+    private static List<GraphicsDevice> availableScreens = new ArrayList<>();
+
+    /**
+     * Currently selected screen
+     */
+    private static GraphicsDevice currentScreen = null;
+
+    /**
+     * The main application frame
+     */
+    private static JFrame frame = null;
     /**
      * Main entry point for the application.
      * 
@@ -35,14 +52,63 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Global Banner Application");
 
+        // Set the menu bar to appear in the macOS global menu bar
+        System.setProperty("apple.laf.useScreenMenuBar", "true");
+        // Set the application name to appear in the macOS menu
+        System.setProperty("apple.awt.application.name", "Global Banner");
+
         SwingUtilities.invokeLater(() -> {
             try {
+                // Detect all available screens
+                detectAvailableScreens();
+
+                // Select the appropriate screen
+                selectDefaultScreen();
+
+                // Create the floating window
                 createGlobalFloatingWindow();
             } catch (IOException e) {
                 System.err.println("Error loading image: " + e.getMessage());
                 e.printStackTrace();
             }
         });
+    }
+
+    /**
+     * Detects all available screens in the system.
+     */
+    private static void detectAvailableScreens() {
+        availableScreens.clear();
+
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice[] screens = ge.getScreenDevices();
+
+        for (GraphicsDevice screen : screens) {
+            availableScreens.add(screen);
+            System.out.println("Detected screen: " + screen.getIDstring());
+        }
+
+        System.out.println("Total screens detected: " + availableScreens.size());
+    }
+
+    /**
+     * Selects the default screen based on availability.
+     * If only one screen is available, it selects that screen.
+     * If multiple screens are available, it selects the second screen.
+     */
+    private static void selectDefaultScreen() {
+        if (availableScreens.isEmpty()) {
+            System.err.println("No screens detected. Using default screen.");
+            currentScreen = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+        } else if (availableScreens.size() == 1) {
+            System.out.println("Only one screen available. Using it.");
+            currentScreen = availableScreens.get(0);
+        } else {
+            System.out.println("Multiple screens available. Using the second screen.");
+            currentScreen = availableScreens.get(1); // Use the second screen (index 1)
+        }
+
+        System.out.println("Selected screen: " + currentScreen.getIDstring());
     }
 
     /**
@@ -60,10 +126,14 @@ public class Main {
         BufferedImage image = ImageIO.read(imageStream);
 
         // Create a JFrame with no decorations
-        JFrame frame = new JFrame("Global Banner");
+        frame = new JFrame("Global Banner");
         frame.setUndecorated(true);
         frame.setAlwaysOnTop(true);
         frame.setType(Window.Type.UTILITY); // Makes it a floating utility window
+
+        // Create and set the menu bar
+        JMenuBar menuBar = createMenuBar();
+        frame.setJMenuBar(menuBar);
 
         // Set the frame to be transparent
         frame.setBackground(new Color(0, 0, 0, 0));
@@ -111,6 +181,30 @@ public class Main {
             }
         });
 
+        // Create a popup menu for screen selection
+        JPopupMenu popupMenu = createScreenSelectionMenu();
+
+        // Add mouse right-click listener to show the popup menu
+        panel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
+            }
+
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
+            }
+
+            private void showPopupMenu(java.awt.event.MouseEvent e) {
+                popupMenu.show(e.getComponent(), e.getX(), e.getY());
+            }
+        });
+
         // Add a key listener to close the application when Escape is pressed
         frame.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
@@ -130,18 +224,104 @@ public class Main {
         // Position the window in the bottom right corner of the screen with margin
         frame.pack();
 
-        // Get screen dimensions
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-
-        // Calculate position (bottom right with margin)
-        int x = screenSize.width - frame.getWidth() - SCREEN_EDGE_MARGIN;
-        int y = screenSize.height - frame.getHeight() - SCREEN_EDGE_MARGIN;
-
-        // Set window location (initially at bottom right, isAtBottomLeft is false by default)
-        frame.setLocation(x, y);
+        // Position the window on the selected screen
+        positionWindowOnCurrentScreen();
 
         frame.setFocusable(true);
         frame.setVisible(true);
+    }
+
+    /**
+     * Creates a menu bar with a File menu containing screen selection options.
+     * 
+     * @return the created menu bar
+     */
+    private static JMenuBar createMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
+
+        // Create File menu
+        JMenu fileMenu = new JMenu("File");
+        menuBar.add(fileMenu);
+
+        // Create Screen submenu
+        JMenu screenMenu = new JMenu("Select Screen");
+        fileMenu.add(screenMenu);
+
+        // Add menu items for each available screen
+        for (int i = 0; i < availableScreens.size(); i++) {
+            GraphicsDevice screen = availableScreens.get(i);
+            DisplayMode displayMode = screen.getDisplayMode();
+            String screenName = "Screen " + (i + 1) + " (" + displayMode.getWidth() + " x " + displayMode.getHeight() + ")";
+
+            JMenuItem menuItem = new JMenuItem(screenName);
+            final int screenIndex = i;
+
+            menuItem.addActionListener(e -> {
+                currentScreen = availableScreens.get(screenIndex);
+                System.out.println("Switched to screen: " + currentScreen.getIDstring());
+                positionWindowOnCurrentScreen();
+            });
+
+            screenMenu.add(menuItem);
+        }
+
+        // Add exit option
+        fileMenu.addSeparator();
+        JMenuItem exitItem = new JMenuItem("Exit");
+        exitItem.addActionListener(e -> System.exit(0));
+        fileMenu.add(exitItem);
+
+        return menuBar;
+    }
+
+    /**
+     * Creates a popup menu for screen selection.
+     * 
+     * @return the created popup menu
+     */
+    private static JPopupMenu createScreenSelectionMenu() {
+        JPopupMenu menu = new JPopupMenu();
+
+        JMenu screenMenu = new JMenu("Select Screen");
+        menu.add(screenMenu);
+
+        // Add menu items for each available screen
+        for (int i = 0; i < availableScreens.size(); i++) {
+            GraphicsDevice screen = availableScreens.get(i);
+            DisplayMode displayMode = screen.getDisplayMode();
+            String screenName = "Screen " + (i + 1) + " (" + displayMode.getWidth() + " x " + displayMode.getHeight() + ")";
+
+            JMenuItem menuItem = new JMenuItem(screenName);
+            final int screenIndex = i;
+
+            menuItem.addActionListener(e -> {
+                currentScreen = availableScreens.get(screenIndex);
+                System.out.println("Switched to screen: " + currentScreen.getIDstring());
+                positionWindowOnCurrentScreen();
+            });
+
+            screenMenu.add(menuItem);
+        }
+
+        return menu;
+    }
+
+    /**
+     * Positions the window on the currently selected screen.
+     */
+    private static void positionWindowOnCurrentScreen() {
+        if (frame != null && currentScreen != null) {
+            // Get the bounds of the selected screen
+            Rectangle screenBounds = currentScreen.getDefaultConfiguration().getBounds();
+
+            // Calculate position (bottom right with margin)
+            int x = screenBounds.x + screenBounds.width - frame.getWidth() - SCREEN_EDGE_MARGIN;
+            int y = screenBounds.y + screenBounds.height - frame.getHeight() - SCREEN_EDGE_MARGIN;
+
+            // Set window location (initially at bottom right, isAtBottomLeft is false by default)
+            frame.setLocation(x, y);
+            isAtBottomLeft = false;
+        }
     }
 
     /**
@@ -151,23 +331,27 @@ public class Main {
      * @param frame the JFrame to reposition
      */
     private static void moveWindowToOppositeCorner(JFrame frame) {
-        // Get screen dimensions
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        if (currentScreen == null) {
+            return;
+        }
+
+        // Get the bounds of the selected screen
+        Rectangle screenBounds = currentScreen.getDefaultConfiguration().getBounds();
 
         // Calculate new position based on current state
         int targetX;
         if (isAtBottomLeft) {
             // Move to bottom right
-            targetX = screenSize.width - frame.getWidth() - SCREEN_EDGE_MARGIN;
+            targetX = screenBounds.x + screenBounds.width - frame.getWidth() - SCREEN_EDGE_MARGIN;
             isAtBottomLeft = false;
         } else {
             // Move to bottom left
-            targetX = SCREEN_EDGE_MARGIN;
+            targetX = screenBounds.x + SCREEN_EDGE_MARGIN;
             isAtBottomLeft = true;
         }
 
         // Y position is always at the bottom with margin
-        int targetY = screenSize.height - frame.getHeight() - SCREEN_EDGE_MARGIN;
+        int targetY = screenBounds.y + screenBounds.height - frame.getHeight() - SCREEN_EDGE_MARGIN;
 
         // Get current position
         Point currentLocation = frame.getLocation();
