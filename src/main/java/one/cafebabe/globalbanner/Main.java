@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.awt.geom.Area;
+import javax.swing.Timer;
 
 /**
  * Main class for the Global Banner application.
@@ -22,6 +23,11 @@ public class Main {
      * Flag to track if the window is currently at the bottom left corner
      */
     private static boolean isAtBottomLeft = false;
+
+    /**
+     * Timer for window movement animation
+     */
+    private static Timer animationTimer = null;
     /**
      * Main entry point for the application.
      * 
@@ -151,22 +157,94 @@ public class Main {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 
         // Calculate new position based on current state
-        int x;
+        int targetX;
         if (isAtBottomLeft) {
             // Move to bottom right
-            x = screenSize.width - frame.getWidth() - SCREEN_EDGE_MARGIN;
+            targetX = screenSize.width - frame.getWidth() - SCREEN_EDGE_MARGIN;
             isAtBottomLeft = false;
         } else {
             // Move to bottom left
-            x = SCREEN_EDGE_MARGIN;
+            targetX = SCREEN_EDGE_MARGIN;
             isAtBottomLeft = true;
         }
 
         // Y position is always at the bottom with margin
-        int y = screenSize.height - frame.getHeight() - SCREEN_EDGE_MARGIN;
+        int targetY = screenSize.height - frame.getHeight() - SCREEN_EDGE_MARGIN;
 
-        // Set the new window location
-        frame.setLocation(x, y);
+        // Get current position
+        Point currentLocation = frame.getLocation();
+
+        // Animate the window movement
+        animateWindowMovement(frame, currentLocation.x, currentLocation.y, targetX, targetY);
+    }
+
+    /**
+     * Animates the window movement from current position to target position.
+     * The animation takes 0.5 seconds with easing (acceleration and deceleration).
+     * 
+     * @param frame the JFrame to animate
+     * @param startX starting X coordinate
+     * @param startY starting Y coordinate
+     * @param endX ending X coordinate
+     * @param endY ending Y coordinate
+     */
+    private static void animateWindowMovement(JFrame frame, int startX, int startY, int endX, int endY) {
+        // Stop any existing animation
+        if (animationTimer != null && animationTimer.isRunning()) {
+            animationTimer.stop();
+        }
+
+        // Animation duration in milliseconds (0.5 seconds)
+        final int DURATION = 150;
+
+        // Animation update interval in milliseconds (smoother with smaller values)
+        final int INTERVAL = 3; // ~60fps
+
+        // Total number of steps in the animation
+        final int STEPS = DURATION / INTERVAL;
+
+        // Current step counter
+        final int[] currentStep = {0};
+
+        // Create new animation timer
+        animationTimer = new Timer(INTERVAL, e -> {
+            // Calculate progress (0.0 to 1.0)
+            double progress = (double) currentStep[0] / STEPS;
+
+            // Apply easing function (ease in-out)
+            double easedProgress = easeInOutQuad(progress);
+
+            // Calculate current position
+            int x = startX + (int) (easedProgress * (endX - startX));
+            int y = startY + (int) (easedProgress * (endY - startY));
+
+            // Update window position
+            frame.setLocation(x, y);
+
+            // Increment step counter
+            currentStep[0]++;
+
+            // Stop timer when animation is complete
+            if (currentStep[0] > STEPS) {
+                // Ensure final position is exact
+                frame.setLocation(endX, endY);
+                animationTimer.stop();
+            }
+        });
+
+        // Start the animation
+        animationTimer.start();
+    }
+
+    /**
+     * Easing function for smooth acceleration and deceleration.
+     * This is a quadratic ease-in-out function.
+     * 
+     * @param t progress value between 0.0 and 1.0
+     * @return eased value between 0.0 and 1.0
+     */
+    private static double easeInOutQuad(double t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
 
     /**
@@ -183,6 +261,10 @@ public class Main {
         @Override
         public void mousePressed(java.awt.event.MouseEvent e) {
             dragStart = e.getPoint();
+            // Cancel any ongoing animations when starting a new drag
+            if (animationTimer != null && animationTimer.isRunning()) {
+                animationTimer.stop();
+            }
         }
 
         @Override
@@ -194,10 +276,11 @@ public class Main {
         public void mouseDragged(java.awt.event.MouseEvent e) {
             if (dragStart != null) {
                 Point currentLocation = frame.getLocation();
-                frame.setLocation(
-                    currentLocation.x + e.getX() - dragStart.x,
-                    currentLocation.y + e.getY() - dragStart.y
-                );
+                int newX = currentLocation.x + e.getX() - dragStart.x;
+                int newY = currentLocation.y + e.getY() - dragStart.y;
+
+                // During active dragging, we use immediate movement for responsive feel
+                frame.setLocation(newX, newY);
             }
         }
     }
