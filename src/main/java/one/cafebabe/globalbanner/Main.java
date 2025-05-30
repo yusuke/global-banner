@@ -6,7 +6,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.awt.geom.Area;
 import javax.swing.Timer;
 
 /**
@@ -81,8 +80,7 @@ public class Main {
             @Override
             protected void paintComponent(Graphics g) {
                 // Don't call super.paintComponent to avoid filling the background
-                if (g instanceof Graphics2D) {
-                    Graphics2D g2d = (Graphics2D) g;
+                if (g instanceof Graphics2D g2d) {
                     g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER));
                 }
                 g.drawImage(image, 0, 0, this);
