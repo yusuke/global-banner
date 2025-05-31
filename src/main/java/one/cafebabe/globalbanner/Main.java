@@ -253,6 +253,11 @@ public class Main {
             DisplayMode displayMode = screen.getDisplayMode();
             String screenName = "Screen " + (i + 1) + " (" + displayMode.getWidth() + " x " + displayMode.getHeight() + ")";
 
+            // Add asterisk to indicate currently selected screen
+            if (screen.equals(currentScreen)) {
+                screenName += " *";
+            }
+
             JMenuItem menuItem = new JMenuItem(screenName);
             final int screenIndex = i;
 
@@ -260,6 +265,11 @@ public class Main {
                 currentScreen = availableScreens.get(screenIndex);
                 System.out.println("Switched to screen: " + currentScreen.getIDstring());
                 positionWindowOnCurrentScreen();
+                // Update menus to reflect the new screen selection
+                if (frame != null) {
+                    frame.setJMenuBar(createMenuBar());
+                    frame.revalidate();
+                }
             });
 
             screenMenu.add(menuItem);
@@ -291,6 +301,11 @@ public class Main {
             DisplayMode displayMode = screen.getDisplayMode();
             String screenName = "Screen " + (i + 1) + " (" + displayMode.getWidth() + " x " + displayMode.getHeight() + ")";
 
+            // Add asterisk to indicate currently selected screen
+            if (screen.equals(currentScreen)) {
+                screenName += " *";
+            }
+
             JMenuItem menuItem = new JMenuItem(screenName);
             final int screenIndex = i;
 
@@ -298,6 +313,11 @@ public class Main {
                 currentScreen = availableScreens.get(screenIndex);
                 System.out.println("Switched to screen: " + currentScreen.getIDstring());
                 positionWindowOnCurrentScreen();
+                // Update menus to reflect the new screen selection
+                if (frame != null) {
+                    frame.setJMenuBar(createMenuBar());
+                    frame.revalidate();
+                }
             });
 
             screenMenu.add(menuItem);
