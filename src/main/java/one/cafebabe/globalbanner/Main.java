@@ -33,7 +33,7 @@ public class Main {
     /**
      * List of all available screens
      */
-    private static List<GraphicsDevice> availableScreens = new ArrayList<>();
+    private static final List<GraphicsDevice> availableScreens = new ArrayList<>();
 
     /**
      * Currently selected screen
@@ -69,7 +69,6 @@ public class Main {
                 createGlobalFloatingWindow();
             } catch (IOException e) {
                 System.err.println("Error loading image: " + e.getMessage());
-                e.printStackTrace();
             }
         });
     }
@@ -102,7 +101,7 @@ public class Main {
             currentScreen = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
         } else if (availableScreens.size() == 1) {
             System.out.println("Only one screen available. Using it.");
-            currentScreen = availableScreens.get(0);
+            currentScreen = availableScreens.getFirst();
         } else {
             System.out.println("Multiple screens available. Using the second screen.");
             currentScreen = availableScreens.get(1); // Use the second screen (index 1)
