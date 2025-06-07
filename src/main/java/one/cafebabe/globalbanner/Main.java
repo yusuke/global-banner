@@ -39,7 +39,7 @@ public class Main {
                 screenManager.selectDefaultScreen();
 
                 // Create the floating window
-                createGlobalFloatingWindow(windowManager, uiFactory);
+                createGlobalFloatingBanner(windowManager, uiFactory);
             } catch (IOException e) {
                 System.err.println("Error loading image: " + e.getMessage());
             }
@@ -53,7 +53,7 @@ public class Main {
      * @param uiFactory the UI factory to use
      * @throws IOException if the image cannot be loaded
      */
-    private static void createGlobalFloatingWindow(
+    private static void createGlobalFloatingBanner(
             WindowManager windowManager, 
             UIFactory uiFactory) throws IOException {
         // Load the image from resources
